@@ -1,0 +1,39 @@
+#COMPILER
+CC		= gcc
+CFLAGS	+= -Ischeduler/include -L. -Wl,-rpath=. -ansi -pedantic-errors -Wall -Wextra -lrt -pthread -fPIC
+LDFLAGS:= -shared
+SCHEDULER_PATH=./src/
+SCHEDULER_SO= libds.so -shared -fPIC $(SCHEDULER_PATH)scheduler.c $(SCHEDULER_PATH)sorted_linked_list.c $(SCHEDULER_PATH)d_linked_list.c $(SCHEDULER_PATH)priority_queue.c $(SCHEDULER_PATH)task.c $(SCHEDULER_PATH)uid.c -I./include
+debug: CFLAGS+=-g
+debug: all
+
+release: CFLAGS+=-DNDEBUG
+release: all
+
+all: user_app
+
+
+user_app: libwatchdog.so libds.so ./test/watchdog_test.c  libwd.so
+	$(CC) $(CFLAGS) -I./include  ./test/watchdog_test.c -lds -lwd -lwatchdog -o $@
+	
+libwatchdog.so: watchdog.o 
+	$(CC) $(LDFLAGS) $(CFLAGS) watchdog.o -lds -lwd -o $@
+	
+wd.o: ./src/wd.c
+	$(CC) $(CFLAGS) $^	-c -I./include
+	
+libwd.so: wd.o
+	$(CC) $(LDFLAGS) $(CFLAGS) $^ -lds -o $@
+
+watchdog: libwd.so ./test/watchdog_test.c
+	$(CC) $(CFLAGS) -I./include  ./src/watchdog.c ./test/watchdog_test.c -lwd -lds -o $@
+
+watchdog.o: watchdog ./src/watchdog.c
+	$(CC) $(CFLAGS) -I./include ./src/watchdog.c	-c
+
+libds.so: 
+	$(CC) $(CFLAGS) -o $(SCHEDULER_SO)
+
+#CLEAN
+clean:
+	rm -f wd.o libwd.so watch_dog libwd.so a.out watch_dog.o wd_user_app_test.o

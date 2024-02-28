@@ -1,0 +1,154 @@
+# THANKS TO MAX KARPENKO, THE LEGIT OWNER/CREATOR OF THIS MAKE FILE. MAY HIS
+# SKILLS DEVELOP EXPONENTIALLY.
+#
+# CONTRIBUTORS : - JOSH BENICHOU
+#
+# NEXT ARE ALL THE MAKE OPERATIONS THAT THIS MAKE FILE CAN DO :
+#	(prefix make)
+#
+# all		- creates all debug, release libraries (right ?)	
+# rund 		- displays a list, and runs inputed file
+# vlgd		- displays a list, and valgrinds inputed file
+# clean		- removes all *.o *.out *.so
+# open		- displays list, opens inputed file
+# runs		- run a specific file, no input nedded (update current variable)
+# vlgs		- valgrinds a specific file, no input nedded (update current variable)
+# create	- creates src, header, test files with given pattern
+# remove	- displays list, removes src, header, test files with inputed pattern 
+
+
+# CHANGE THIS TO WHICHEVER IS CURRENTLY IN DEVELOPMENT
+current ?= wd
+
+CC := gcc
+VLG := valgrind
+VLG_FLAGS := --leak-check=yes --track-origins=yes
+CFLAGS := -ansi -pedantic-errors -Wall -Wextra
+SOFLAGS := -fPIC -shared
+LDFLAGS := -l$(current)
+DBG_F := -g 
+REL_F := -DNDEBUG -O3
+
+TEST := ../../test/
+SRC := src/
+INCLUDE := include/
+
+PREFIXES := $(notdir $(basename $(shell find $(SRC) -name '*.c')))
+BIN_DBG := bin/debug/
+BIN_REL := bin/release/
+
+OBJ_DBG := $(BIN_DBG)%_test.o $(BIN_DBG)lib$(current).so
+OBJ_REL := $(BIN_REL)%_test.o $(BIN_REL)lib$(current).so
+LD_DBG := -Wl,-rpath,'$(BIN_DBG)' -L$(BIN_DBG)
+LD_REL := -Wl,-rpath,'$(BIN_REL)' -L$(BIN_REL)
+
+
+#DEPENDENCY CHECKS
+include deps.mk
+
+.PHONY: clean release debug all tree vlg run \
+		$(PREFIXES) cgdb list_files get_name code deb
+
+.PRECIOUS: $(OBJ_DBG) $(OBJ_REL)
+
+debug:  $(BIN_DBG)watchdog.out $(BIN_DBG)$(current).out 
+
+release: $(BIN_REL)$(current).out
+
+run: all list_files get_name 
+	$(BIN_REL)$(filename).out
+
+rund: all list_files get_name 
+	$(BIN_DBG)$(filename).out
+
+$(PREFIXES):
+	$(MAKE) --silent release current=$@ || (echo "Error occurred during 'release' target" && exit 1)
+	$(MAKE) --silent debug current=$@ || (echo "Error occurred during 'debug' target" && exit 1)
+
+
+
+all: debug release $(PREFIXES)
+#
+
+vlg: $(BIN_REL)$(current).out 
+	$(VLG) $(VLG_FLAGS) $^
+
+vlgd: all list_files get_name 
+	$(VLG) $(BIN_DBG)$(filename).out
+
+tree:
+	@echo "yes, let's grow a tree"
+	@tree
+
+cgdb: $(BIN_DBG)$(current).out
+	cgdb $<
+
+#UNIT COMPILATION RULES
+$(BIN_DBG)%.out: $(OBJ_DBG)
+	$(CC) $(LD_DBG) $< $(LDFLAGS) -o $@
+
+$(BIN_DBG)%_test.o: $(TEST)%_test.c $(INCLUDE)%.h
+	$(CC) -c $(CFLAGS) $(DBG_F) -I$(INCLUDE) $< -o $@
+
+$(BIN_REL)%.out: $(OBJ_REL)
+	$(CC) $(LD_REL) $< $(LDFLAGS) -o $@
+
+$(BIN_REL)%_test.o: $(TEST)%_test.c $(INCLUDE)%.h
+	$(CC) -c $(CFLAGS) $(REL_F) -I$(INCLUDE) $< -o $@
+
+#SHARED LIBRARY RULES
+$(BIN_REL)lib%.so: $(SRC)%.c $(INCLUDE)%.h
+	$(CC) $(CFLAGS) $(SOFLAGS) $(REL_F) -I$(INCLUDE) $< -o $@
+
+$(BIN_DBG)lib%.so: $(SRC)%.c $(INCLUDE)%.h
+	$(CC) $(CFLAGS) $(SOFLAGS) $(DBG_F) -I$(INCLUDE) $< -o $@
+
+
+clean:
+	@find . -type f -name "*.o" -delete
+	@find . -type f -name "*.out" -delete
+	@find . -type f -name "*.so" -delete
+
+open:list_files get_name
+	code $(SRC)$(filename).c  $(INCLUDE)$(filename).h $(TEST)$(filename)_test.c
+
+get_name:
+	@$(eval filename := $(shell read -p "Please enter file name :" value && echo $$value))
+
+list_files:
+	@find src/ -type f -name '*.c' -exec basename {} .c \;
+	@echo "\n"
+
+# --------------------------------------------- WATCHDOG SPECIFIC -------------------------
+
+APP = ./bin/debug/watchdog.out
+WD_EXECUTABLE = ./bin/debug/wd.out
+
+runs: deb $(APP) $(WD_EXECUTABLE)
+	@$(APP) $(WD_EXECUTABLE)
+
+deb : 
+	gcc -c -ansi -pedantic-errors -Wall -Wextra -g  -Iinclude/ test/wd_test.c -o bin/debug/wd_test.o
+	gcc -Wl,-rpath,'bin/debug/' -Lbin/debug/ bin/debug/wd_test.o -lwd -lscheduler -luid -lpriority_queue -lsorted_linked_list -ld_linked_list -ltask -o bin/debug/wd.out
+	gcc -ansi -pedantic-errors -Wall -Wextra -fPIC -shared -g -Iinclude/ src/watchdog.c -o bin/debug/libwatchdog.so
+	gcc -c -ansi -pedantic-errors -Wall -Wextra -g  -Iinclude/ test/watchdog_test.c -o bin/debug/watchdog_test.o
+	gcc -Wl,-rpath,'bin/debug/' -Lbin/debug/ bin/debug/watchdog_test.o -lwatchdog -lwd -lscheduler -luid -lpriority_queue -lsorted_linked_list -ld_linked_list -ltask -o bin/debug/watchdog.out
+
+# --------------------------------------------- WATCHDOG SPECIFIC -------------------------
+
+
+vlgs: $(BIN_DBG)$(current).out
+	$(VLG) $(VLG_FLAGS) $^
+
+#CREATE FILES IN TEST/INCLUDES/SRC
+create: get_name
+	@cp ../../MODELS/NEW_EMPTY_SRC.txt $(SRC)$(filename).c 
+	@cp ../../MODELS/NEW_EMPTY_TEST.txt  $(TEST)$(filename)_test.c 
+	@cp ../../MODELS/NEW_EMPTY_HEADER.txt  $(INCLUDE)$(filename).h 
+
+
+#REMOVE SPECIFIC FILES WITH GIVEN PATTERN
+remove: list_files get_name
+	@rm $(INCLUDE)$(filename).h \
+			$(SRC)$(filename).c \
+			 $(TEST)$(filename)_test.c  	
