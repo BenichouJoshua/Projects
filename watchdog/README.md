@@ -32,7 +32,9 @@ This project implements a multithreaded watchdog system designed to monitor crit
 Clone the repository:
 
   ```bash```
-  ```git clone https://github.com/niritkatz/Watchdog.git```
+  
+  ```(https://github.com/BenichouJoshua/Projects/tree/main/watchdog)```
+  
   ```cd Watchdog```
 
 ### Compiling and running the System
