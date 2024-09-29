@@ -39,6 +39,6 @@ Clone the repository:
 ### Compiling and running the System
 
 To compile and run the watchdog, execute:
-  make deb
+```make deb```
 To run:
-  make runs
+  ```make runs```
