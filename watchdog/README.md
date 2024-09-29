@@ -40,5 +40,6 @@ Clone the repository:
 
 To compile and run the watchdog, execute:
 ```make deb```
+
 To run:
   ```make runs```
